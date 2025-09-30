@@ -1,0 +1,45 @@
+{
+  "name": "ai-content-to-pdf-enhancer",
+  "version": "1.0.0",
+  "description": "A Chrome extension that transforms web content into enriched, validated, and professionally formatted PDF documents using AI technology.",
+  "main": "background.js",
+  "scripts": {
+    "test": "jupyter notebook AI_Content_to_PDF_Enhancer_Testing.ipynb",
+    "build": "echo 'No build process required for Chrome extension'",
+    "lint": "echo 'Linting not configured yet'",
+    "package": "zip -r ai-content-to-pdf-enhancer.zip . -x '*.git*' 'node_modules/*' '*.pyc' '__pycache__/*' '*.log' 'myenv/*'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "pdf",
+    "content-enhancement",
+    "gemini",
+    "web-scraping",
+    "document-generation"
+  ],
+  "author": "AI Content-to-PDF Enhancer Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ai-content-to-pdf-enhancer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/ai-content-to-pdf-enhancer/issues"
+  },
+  "homepage": "https://github.com/your-username/ai-content-to-pdf-enhancer#readme",
+  "devDependencies": {
+    "jupyter": "^1.0.0"
+  },
+  "dependencies": {
+    "requests": "^2.31.0",
+    "beautifulsoup4": "^4.12.0",
+    "reportlab": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "Chrome >= 88"
+  ]
+}

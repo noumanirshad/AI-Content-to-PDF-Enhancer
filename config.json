@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "api_endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+  "default_settings": {
+    "enhancement_type": "summarize",
+    "pdf_style": "academic",
+    "include_images": true,
+    "include_sources": true,
+    "max_content_length": 50000,
+    "processing_timeout": 60,
+    "enable_logging": true
+  },
+  "chrome_extension": {
+    "manifest_version": 3,
+    "permissions": [
+      "activeTab",
+      "storage",
+      "scripting",
+      "downloads"
+    ],
+    "host_permissions": [
+      "http://*/*",
+      "https://*/*"
+    ]
+  }
+}

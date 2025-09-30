@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI PDF Enhancer</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI PDF Enhancer</h1>
+            <p>Transform web content into enriched PDFs</p>
+            <button id="openSettings" class="btn btn-outline" style="margin-top: 10px;">⚙️ Settings</button>
+        </div>
+        
+        <div class="status" id="status">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span id="statusText">Ready to enhance content</span>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="enhancementType">Enhancement Type:</label>
+                <select id="enhancementType">
+                    <option value="summarize">Summarize Content</option>
+                    <option value="expand">Expand with Context</option>
+                    <option value="validate">Validate Claims</option>
+                    <option value="comprehensive">Comprehensive Enhancement</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="pdfStyle">PDF Style:</label>
+                <select id="pdfStyle">
+                    <option value="academic">Academic Report</option>
+                    <option value="executive">Executive Summary</option>
+                    <option value="casual">Casual Reading</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="includeImages" checked>
+                    Include Images
+                </label>
+            </div>
+            
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="includeSources" checked>
+                    Include Sources & Citations
+                </label>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button id="enhanceBtn" class="btn btn-primary">
+                <span class="btn-text">Enhance & Generate PDF</span>
+                <div class="spinner" id="spinner" style="display: none;"></div>
+            </button>
+            <button id="previewBtn" class="btn btn-secondary">Preview Content</button>
+            <button id="downloadPdfBtn" class="btn btn-success" style="display: none;">
+                📄 Download PDF
+            </button>
+        </div>
+        
+        <div class="preview" id="preview" style="display: none;">
+            <h3>Content Preview</h3>
+            <div id="previewContent"></div>
+        </div>
+        
+        <div class="footer">
+            <div class="progress" id="progress" style="display: none;">
+                <div class="progress-bar" id="progressBar"></div>
+                <span id="progressText">Processing...</span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>

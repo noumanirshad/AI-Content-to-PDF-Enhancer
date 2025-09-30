@@ -1,0 +1,566 @@
+// Import PDF generator
+importScripts('pdf-generator.js');
+
+// Background service worker for AI processing and PDF generation
+class AIEnhancerBackground {
+    constructor() {
+        this.setupMessageListener();
+        this.setupLogging();
+        this.pdfGenerator = new PDFGenerator();
+    }
+
+    setupMessageListener() {
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            this.handleMessage(request, sender, sendResponse);
+            return true; // Keep message channel open for async response
+        });
+    }
+
+    async handleMessage(request, sender, sendResponse) {
+        try {
+            switch (request.action) {
+                case 'enhanceContent':
+                    const enhancedContent = await this.enhanceContent(request.data, request.settings);
+                    sendResponse({ success: true, data: enhancedContent });
+                    break;
+                    
+                case 'generatePDF':
+                    const pdfResult = await this.generatePDF(request.data, request.settings);
+                    sendResponse({ success: true, ...pdfResult });
+                    break;
+                    
+                default:
+                    sendResponse({ success: false, error: 'Unknown action' });
+            }
+        } catch (error) {
+            console.error('Background error:', error);
+            this.logError('Background processing error', error);
+            sendResponse({ success: false, error: error.message });
+        }
+    }
+
+    async enhanceContent(contentData, settings) {
+        this.logInfo('Starting content enhancement', { 
+            url: contentData.url, 
+            enhancementType: settings.enhancementType 
+        });
+
+        try {
+            // Prepare content for AI processing
+            const processedContent = await this.prepareContentForAI(contentData, settings);
+            
+            // Call Gemini AI for enhancement
+            const enhancedContent = await this.callGeminiAI(processedContent, settings);
+            
+            // Post-process the enhanced content
+            const finalContent = await this.postProcessContent(enhancedContent, contentData, settings);
+            
+            this.logInfo('Content enhancement completed', { 
+                originalWordCount: contentData.wordCount,
+                enhancedWordCount: finalContent.wordCount 
+            });
+            
+            return finalContent;
+            
+        } catch (error) {
+            this.logError('Content enhancement failed', error);
+            throw error;
+        }
+    }
+
+    async prepareContentForAI(contentData, settings) {
+        const { enhancementType, pdfStyle } = settings;
+        
+        // Chunk content if too long
+        const chunks = this.chunkContent(contentData.textContent, 4000);
+        
+        return {
+            originalContent: contentData,
+            chunks: chunks,
+            enhancementType: enhancementType,
+            pdfStyle: pdfStyle,
+            includeImages: settings.includeImages,
+            includeSources: settings.includeSources,
+            metadata: {
+                title: contentData.title,
+                url: contentData.url,
+                author: contentData.author,
+                publishedDate: contentData.publishedDate,
+                wordCount: contentData.wordCount,
+                readingTime: contentData.readingTime
+            }
+        };
+    }
+
+    chunkContent(text, maxChunkSize) {
+        const sentences = text.split(/[.!?]+/);
+        const chunks = [];
+        let currentChunk = '';
+        
+        for (const sentence of sentences) {
+            if (currentChunk.length + sentence.length > maxChunkSize && currentChunk) {
+                chunks.push(currentChunk.trim());
+                currentChunk = sentence;
+            } else {
+                currentChunk += (currentChunk ? '. ' : '') + sentence;
+            }
+        }
+        
+        if (currentChunk.trim()) {
+            chunks.push(currentChunk.trim());
+        }
+        
+        return chunks;
+    }
+
+    async callGeminiAI(processedContent, settings) {
+        const { enhancementType, pdfStyle } = settings;
+        
+        // Get API key from storage
+        const apiKey = await this.getAPIKey();
+        if (!apiKey) {
+            throw new Error('Gemini API key not found. Please configure it in the extension settings.');
+        }
+
+        const prompt = this.buildPrompt(processedContent, enhancementType, pdfStyle);
+        
+        try {
+            // Use the latest Gemini 2.5 Flash model with v1beta API
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.3,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 8192,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (!generatedText) {
+                throw new Error('No content generated by Gemini');
+            }
+
+            return this.parseAIResponse(generatedText, processedContent);
+
+        } catch (error) {
+            this.logError('Gemini API call failed', error);
+            throw error;
+        }
+    }
+
+    buildPrompt(processedContent, enhancementType, pdfStyle) {
+        const { originalContent, metadata } = processedContent;
+        
+        const basePrompt = `You are an AI content enhancer. Transform the following web content into a high-quality, enriched document.
+
+ORIGINAL CONTENT:
+Title: ${metadata.title}
+URL: ${metadata.url}
+Author: ${metadata.author || 'Unknown'}
+Published: ${metadata.publishedDate || 'Unknown'}
+
+Content:
+${originalContent.textContent}
+
+ENHANCEMENT REQUIREMENTS:
+- Enhancement Type: ${enhancementType}
+- PDF Style: ${pdfStyle}
+- Include sources and citations: ${processedContent.includeSources}
+- Include images: ${processedContent.includeImages}
+
+Please provide your response in the following JSON format:
+{
+  "title": "Enhanced title",
+  "summary": "Brief summary of the content",
+  "enhancedContent": "Main enhanced content with proper formatting",
+  "keyPoints": ["Point 1", "Point 2", "Point 3"],
+  "sources": [{"title": "Source title", "url": "source_url", "relevance": "Why this source is relevant"}],
+  "insights": "Additional insights and analysis",
+  "recommendations": "Actionable recommendations based on the content",
+  "metadata": {
+    "wordCount": 0,
+    "readingTime": 0,
+    "confidence": 0.95
+  }
+}`;
+
+        switch (enhancementType) {
+            case 'summarize':
+                return basePrompt + '\n\nFocus on creating a concise, well-structured summary that captures the essential information.';
+                
+            case 'expand':
+                return basePrompt + '\n\nExpand the content with additional context, explanations, and background information to provide deeper understanding.';
+                
+            case 'validate':
+                return basePrompt + '\n\nValidate claims and facts, add reasoning and evidence, and provide a balanced analysis with proper citations.';
+                
+            case 'comprehensive':
+                return basePrompt + '\n\nProvide a comprehensive enhancement including summary, expansion, validation, and actionable insights.';
+                
+            default:
+                return basePrompt;
+        }
+    }
+
+    parseAIResponse(responseText, processedContent) {
+        try {
+            // Try to extract JSON from the response
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                return {
+                    ...parsed,
+                    originalContent: processedContent.originalContent,
+                    processingInfo: {
+                        enhancedAt: new Date().toISOString(),
+                        enhancementType: processedContent.enhancementType,
+                        pdfStyle: processedContent.pdfStyle
+                    }
+                };
+            } else {
+                // Fallback if JSON parsing fails
+                return {
+                    title: processedContent.originalContent.title,
+                    summary: responseText.substring(0, 500) + '...',
+                    enhancedContent: responseText,
+                    keyPoints: [],
+                    sources: [],
+                    insights: '',
+                    recommendations: '',
+                    metadata: {
+                        wordCount: responseText.split(' ').length,
+                        readingTime: Math.ceil(responseText.split(' ').length / 200),
+                        confidence: 0.8
+                    },
+                    originalContent: processedContent.originalContent,
+                    processingInfo: {
+                        enhancedAt: new Date().toISOString(),
+                        enhancementType: processedContent.enhancementType,
+                        pdfStyle: processedContent.pdfStyle
+                    }
+                };
+            }
+        } catch (error) {
+            this.logError('Failed to parse AI response', error);
+            throw new Error('Failed to parse AI response');
+        }
+    }
+
+    async postProcessContent(enhancedContent, originalContent, settings) {
+        // Add any post-processing logic here
+        return {
+            ...enhancedContent,
+            originalUrl: originalContent.url,
+            originalTitle: originalContent.title,
+            images: settings.includeImages ? originalContent.images : [],
+            links: settings.includeSources ? originalContent.links : []
+        };
+    }
+
+    async generatePDF(enhancedContent, settings) {
+        return await this.pdfGenerator.generatePDF(enhancedContent, settings);
+    }
+
+    createPDFTemplate(enhancedContent, settings) {
+        const { pdfStyle } = settings;
+        
+        return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${enhancedContent.title}</title>
+    <style>
+        ${this.getPDFStyles(pdfStyle)}
+    </style>
+</head>
+<body>
+    <div class="pdf-container">
+        <header class="pdf-header">
+            <h1 class="title">${enhancedContent.title}</h1>
+            <div class="metadata">
+                <p><strong>Source:</strong> ${enhancedContent.originalUrl}</p>
+                <p><strong>Enhanced:</strong> ${new Date(enhancedContent.processingInfo.enhancedAt).toLocaleDateString()}</p>
+                <p><strong>Reading Time:</strong> ${enhancedContent.metadata?.readingTime || 'Unknown'} minutes</p>
+            </div>
+        </header>
+        
+        <main class="pdf-content">
+            ${enhancedContent.summary ? `
+                <section class="summary">
+                    <h2>Summary</h2>
+                    <p>${enhancedContent.summary}</p>
+                </section>
+            ` : ''}
+            
+            <section class="enhanced-content">
+                <h2>Enhanced Content</h2>
+                <div class="content-body">
+                    ${this.formatContentForPDF(enhancedContent.enhancedContent)}
+                </div>
+            </section>
+            
+            ${enhancedContent.keyPoints && enhancedContent.keyPoints.length > 0 ? `
+                <section class="key-points">
+                    <h2>Key Points</h2>
+                    <ul>
+                        ${enhancedContent.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                    </ul>
+                </section>
+            ` : ''}
+            
+            ${enhancedContent.insights ? `
+                <section class="insights">
+                    <h2>Insights & Analysis</h2>
+                    <p>${enhancedContent.insights}</p>
+                </section>
+            ` : ''}
+            
+            ${enhancedContent.recommendations ? `
+                <section class="recommendations">
+                    <h2>Recommendations</h2>
+                    <p>${enhancedContent.recommendations}</p>
+                </section>
+            ` : ''}
+            
+            ${enhancedContent.sources && enhancedContent.sources.length > 0 ? `
+                <section class="sources">
+                    <h2>Sources & References</h2>
+                    <ul>
+                        ${enhancedContent.sources.map(source => `
+                            <li>
+                                <strong>${source.title}</strong><br>
+                                <a href="${source.url}">${source.url}</a><br>
+                                <em>${source.relevance}</em>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </section>
+            ` : ''}
+        </main>
+        
+        <footer class="pdf-footer">
+            <p>Generated by AI Content-to-PDF Enhancer | ${new Date().toLocaleDateString()}</p>
+        </footer>
+    </div>
+</body>
+</html>`;
+    }
+
+    getPDFStyles(style) {
+        const baseStyles = `
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+            .pdf-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+            .pdf-header { border-bottom: 2px solid #667eea; padding-bottom: 20px; margin-bottom: 30px; }
+            .title { font-size: 28px; color: #2c3e50; margin-bottom: 15px; }
+            .metadata { font-size: 14px; color: #666; }
+            .metadata p { margin: 5px 0; }
+            .pdf-content section { margin-bottom: 30px; }
+            .pdf-content h2 { font-size: 22px; color: #2c3e50; margin-bottom: 15px; border-left: 4px solid #667eea; padding-left: 15px; }
+            .pdf-content h3 { font-size: 18px; color: #34495e; margin: 20px 0 10px 0; }
+            .pdf-content p { margin-bottom: 15px; text-align: justify; }
+            .pdf-content ul, .pdf-content ol { margin: 15px 0; padding-left: 30px; }
+            .pdf-content li { margin-bottom: 8px; }
+            .pdf-content a { color: #667eea; text-decoration: none; }
+            .pdf-content a:hover { text-decoration: underline; }
+            .pdf-footer { border-top: 1px solid #ddd; padding-top: 20px; margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+            @media print { .pdf-container { max-width: none; } }
+        `;
+
+        switch (style) {
+            case 'academic':
+                return baseStyles + `
+                    .pdf-content { font-size: 12pt; }
+                    .pdf-content h2 { font-size: 16pt; }
+                    .pdf-content h3 { font-size: 14pt; }
+                    .sources { font-size: 10pt; }
+                `;
+            case 'executive':
+                return baseStyles + `
+                    .pdf-content { font-size: 11pt; }
+                    .key-points { background: #f8f9fa; padding: 20px; border-radius: 8px; }
+                    .insights { background: #e8f4fd; padding: 20px; border-radius: 8px; }
+                `;
+            case 'casual':
+                return baseStyles + `
+                    .pdf-content { font-size: 14pt; }
+                    .pdf-content h2 { color: #667eea; }
+                    .pdf-content p { line-height: 1.8; }
+                `;
+            default:
+                return baseStyles;
+        }
+    }
+
+    formatContentForPDF(content) {
+        // Convert markdown-like formatting to HTML
+        return content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/^/, '<p>')
+            .replace(/$/, '</p>');
+    }
+
+    async generatePDFData(htmlContent) {
+        // Generate PDF using Chrome's printing API
+        try {
+            // Create a complete HTML document with proper styling for PDF
+            const fullHtmlDocument = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Content PDF</title>
+    <style>
+        @media print {
+            body { margin: 0; padding: 20px; }
+            .page-break { page-break-before: always; }
+            .no-print { display: none; }
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1 { color: #2c3e50; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        h2 { color: #34495e; margin-top: 30px; }
+        h3 { color: #495057; margin-top: 20px; }
+        
+        .metadata {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .content-section {
+            margin-bottom: 25px;
+        }
+        
+        .summary, .key-points, .insights, .recommendations {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .key-points ul {
+            padding-left: 20px;
+        }
+        
+        .sources {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .sources ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .sources li {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    ${htmlContent}
+</body>
+</html>`;
+
+            // Create a data URL for the complete HTML document
+            const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(fullHtmlDocument)}`;
+            
+            return dataUrl;
+            
+        } catch (error) {
+            this.logError('PDF data generation failed', error);
+            throw new Error('Failed to generate PDF data');
+        }
+    }
+
+    generateFilename(title) {
+        const sanitized = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+        return `enhanced_${sanitized}_${Date.now()}.pdf`;
+    }
+
+    async getAPIKey() {
+        return new Promise((resolve) => {
+            chrome.storage.sync.get(['geminiApiKey'], (result) => {
+                resolve(result.geminiApiKey);
+            });
+        });
+    }
+
+    setupLogging() {
+        this.logs = [];
+    }
+
+    logInfo(message, data = {}) {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            message,
+            data
+        };
+        this.logs.push(logEntry);
+        console.log('[AI Enhancer]', logEntry);
+    }
+
+    logError(message, error) {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            level: 'ERROR',
+            message,
+            error: error.message || error,
+            stack: error.stack
+        };
+        this.logs.push(logEntry);
+        console.error('[AI Enhancer]', logEntry);
+    }
+}
+
+// Initialize background service
+new AIEnhancerBackground();

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Content PDF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: white;
+        }
+
+        .pdf-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        .pdf-header {
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .metadata {
+            font-size: 14px;
+            color: #666;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .metadata-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+            margin-right: 8px;
+            min-width: 80px;
+        }
+
+        .pdf-content {
+            margin-bottom: 40px;
+        }
+
+        .pdf-content section {
+            margin-bottom: 40px;
+            page-break-inside: avoid;
+        }
+
+        .pdf-content h2 {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+            padding-left: 20px;
+            font-weight: 600;
+        }
+
+        .pdf-content h3 {
+            font-size: 20px;
+            color: #34495e;
+            margin: 25px 0 15px 0;
+            font-weight: 600;
+        }
+
+        .pdf-content p {
+            margin-bottom: 18px;
+            text-align: justify;
+            font-size: 16px;
+        }
+
+        .pdf-content ul, .pdf-content ol {
+            margin: 20px 0;
+            padding-left: 40px;
+        }
+
+        .pdf-content li {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .pdf-content a {
+            color: #667eea;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-bottom 0.3s ease;
+        }
+
+        .pdf-content a:hover {
+            border-bottom-color: #667eea;
+        }
+
+        .summary {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+        }
+
+        .key-points {
+            background: #e8f4fd;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #17a2b8;
+        }
+
+        .insights {
+            background: #fff3cd;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #ffc107;
+        }
+
+        .recommendations {
+            background: #d4edda;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #28a745;
+        }
+
+        .sources {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+
+        .sources ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .sources li {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .source-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .source-url {
+            color: #667eea;
+            font-size: 14px;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .source-relevance {
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .pdf-footer {
+            border-top: 2px solid #dee2e6;
+            padding-top: 30px;
+            margin-top: 50px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .processing-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .processing-info h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .processing-info p {
+            margin: 5px 0;
+            font-size: 13px;
+        }
+
+        @media print {
+            .pdf-container {
+                max-width: none;
+                padding: 20px;
+            }
+            
+            .pdf-content section {
+                page-break-inside: avoid;
+            }
+            
+            .pdf-content h2 {
+                page-break-after: avoid;
+            }
+        }
+
+        @page {
+            margin: 1in;
+            size: A4;
+        }
+    </style>
+</head>
+<body>
+    <div class="pdf-container">
+        <header class="pdf-header">
+            <h1 class="title" id="title">Enhanced Content</h1>
+            <div class="metadata" id="metadata">
+                <!-- Metadata will be populated by JavaScript -->
+            </div>
+        </header>
+
+        <div class="processing-info" id="processingInfo">
+            <h4>Processing Information</h4>
+            <p><strong>Enhanced:</strong> <span id="enhancedDate"></span></p>
+            <p><strong>Enhancement Type:</strong> <span id="enhancementType"></span></p>
+            <p><strong>PDF Style:</strong> <span id="pdfStyle"></span></p>
+        </div>
+
+        <main class="pdf-content" id="mainContent">
+            <!-- Content will be populated by JavaScript -->
+        </main>
+
+        <footer class="pdf-footer">
+            <p>Generated by AI Content-to-PDF Enhancer | <span id="generationDate"></span></p>
+        </footer>
+    </div>
+
+    <script>
+        // This script will be used to populate the template with actual content
+        function populateTemplate(data) {
+            // Populate title
+            document.getElementById('title').textContent = data.title || 'Enhanced Content';
+            
+            // Populate metadata
+            const metadata = document.getElementById('metadata');
+            metadata.innerHTML = `
+                <div class="metadata-item">
+                    <span class="metadata-label">Source:</span>
+                    <span>${data.originalUrl || 'Unknown'}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Author:</span>
+                    <span>${data.originalAuthor || 'Unknown'}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Published:</span>
+                    <span>${data.originalPublishedDate || 'Unknown'}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Reading Time:</span>
+                    <span>${data.metadata?.readingTime || 'Unknown'} minutes</span>
+                </div>
+            `;
+            
+            // Populate processing info
+            document.getElementById('enhancedDate').textContent = new Date(data.processingInfo?.enhancedAt || Date.now()).toLocaleDateString();
+            document.getElementById('enhancementType').textContent = data.processingInfo?.enhancementType || 'Unknown';
+            document.getElementById('pdfStyle').textContent = data.processingInfo?.pdfStyle || 'Unknown';
+            
+            // Populate main content
+            const mainContent = document.getElementById('mainContent');
+            let contentHTML = '';
+            
+            if (data.summary) {
+                contentHTML += `
+                    <section class="summary">
+                        <h2>Summary</h2>
+                        <p>${data.summary}</p>
+                    </section>
+                `;
+            }
+            
+            if (data.enhancedContent) {
+                contentHTML += `
+                    <section class="enhanced-content">
+                        <h2>Enhanced Content</h2>
+                        <div class="content-body">
+                            ${formatContent(data.enhancedContent)}
+                        </div>
+                    </section>
+                `;
+            }
+            
+            if (data.keyPoints && data.keyPoints.length > 0) {
+                contentHTML += `
+                    <section class="key-points">
+                        <h2>Key Points</h2>
+                        <ul>
+                            ${data.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                        </ul>
+                    </section>
+                `;
+            }
+            
+            if (data.insights) {
+                contentHTML += `
+                    <section class="insights">
+                        <h2>Insights & Analysis</h2>
+                        <p>${data.insights}</p>
+                    </section>
+                `;
+            }
+            
+            if (data.recommendations) {
+                contentHTML += `
+                    <section class="recommendations">
+                        <h2>Recommendations</h2>
+                        <p>${data.recommendations}</p>
+                    </section>
+                `;
+            }
+            
+            if (data.sources && data.sources.length > 0) {
+                contentHTML += `
+                    <section class="sources">
+                        <h2>Sources & References</h2>
+                        <ul>
+                            ${data.sources.map(source => `
+                                <li>
+                                    <div class="source-title">${source.title}</div>
+                                    <div class="source-url">${source.url}</div>
+                                    <div class="source-relevance">${source.relevance}</div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </section>
+                `;
+            }
+            
+            mainContent.innerHTML = contentHTML;
+            
+            // Set generation date
+            document.getElementById('generationDate').textContent = new Date().toLocaleDateString();
+        }
+        
+        function formatContent(content) {
+            return content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/^/, '<p>')
+                .replace(/$/, '</p>');
+        }
+    </script>
+</body>
+</html>

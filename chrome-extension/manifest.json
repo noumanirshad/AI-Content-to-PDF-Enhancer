@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "AI Content-to-PDF Enhancer",
+  "version": "1.0.0",
+  "description": "Transform web content into enriched, validated PDFs using AI",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI PDF Enhancer"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["readability.js", "pdf-template.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

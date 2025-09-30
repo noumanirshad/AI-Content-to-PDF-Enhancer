@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI PDF Enhancer - Settings</title>
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>AI PDF Enhancer Settings</h1>
+            <p>Configure your AI enhancement preferences and API settings</p>
+        </header>
+
+        <main class="settings-content">
+            <section class="settings-section">
+                <h2>API Configuration</h2>
+                <div class="form-group">
+                    <label for="geminiApiKey">Gemini API Key:</label>
+                    <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key">
+                    <small>Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+                </div>
+                <div class="form-group">
+                    <button id="testApiKey" class="btn btn-secondary">Test API Key</button>
+                    <span id="apiKeyStatus" class="status-indicator"></span>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Default Enhancement Settings</h2>
+                <div class="form-group">
+                    <label for="defaultEnhancementType">Default Enhancement Type:</label>
+                    <select id="defaultEnhancementType">
+                        <option value="summarize">Summarize Content</option>
+                        <option value="expand">Expand with Context</option>
+                        <option value="validate">Validate Claims</option>
+                        <option value="comprehensive">Comprehensive Enhancement</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="defaultPdfStyle">Default PDF Style:</label>
+                    <select id="defaultPdfStyle">
+                        <option value="academic">Academic Report</option>
+                        <option value="executive">Executive Summary</option>
+                        <option value="casual">Casual Reading</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="defaultIncludeImages" checked>
+                        Include Images by Default
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="defaultIncludeSources" checked>
+                        Include Sources & Citations by Default
+                    </label>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Advanced Settings</h2>
+                <div class="form-group">
+                    <label for="maxContentLength">Maximum Content Length (characters):</label>
+                    <input type="number" id="maxContentLength" value="50000" min="1000" max="200000">
+                    <small>Content longer than this will be truncated before AI processing</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="processingTimeout">Processing Timeout (seconds):</label>
+                    <input type="number" id="processingTimeout" value="60" min="10" max="300">
+                    <small>Maximum time to wait for AI processing</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="enableLogging" checked>
+                        Enable Detailed Logging
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="showProcessingSteps">
+                        Show Detailed Processing Steps
+                    </label>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Data & Privacy</h2>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="storeProcessingHistory">
+                        Store Processing History
+                    </label>
+                    <small>Keep a local record of processed content for debugging</small>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="anonymizeData">
+                        Anonymize Data in Logs
+                    </label>
+                    <small>Remove sensitive information from log files</small>
+                </div>
+
+                <div class="form-group">
+                    <button id="clearData" class="btn btn-warning">Clear All Data</button>
+                    <small>This will remove all stored settings, logs, and processing history</small>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>About</h2>
+                <div class="about-info">
+                    <p><strong>Version:</strong> 1.0.0</p>
+                    <p><strong>Last Updated:</strong> September 28, 2025</p>
+                    <p><strong>Developer:</strong> AI Content-to-PDF Enhancer Team</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="actions">
+                <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+                <button id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+                <button id="exportSettings" class="btn btn-outline">Export Settings</button>
+            </div>
+        </footer>
+    </div>
+
+    <div class="modal" id="confirmModal" style="display: none;">
+        <div class="modal-content">
+            <h3>Confirm Action</h3>
+            <p id="confirmMessage"></p>
+            <div class="modal-actions">
+                <button id="confirmYes" class="btn btn-danger">Yes</button>
+                <button id="confirmNo" class="btn btn-secondary">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>
